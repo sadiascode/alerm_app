@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "993853863782",
+    "project_id": "alerm-b6c51",
+    "storage_bucket": "alerm-b6c51.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:993853863782:android:6b7a582bb226821e757aa7",
+        "android_client_info": {
+          "package_name": "com.example.alerm"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDFyXJE_frbdep28Dk7OnW3lvRVGJeYOtU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
