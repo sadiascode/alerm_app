@@ -6,6 +6,7 @@ class CustomField extends StatefulWidget {
   final TextEditingController? controller;
   final Color textColor;
   final Color borderColor;
+  final String? Function(String?)? validator;
 
   const CustomField({
     super.key,
@@ -14,6 +15,7 @@ class CustomField extends StatefulWidget {
     this.controller,
     this.textColor = const Color(0xffD7AAEC),
     this.borderColor = const Color(0xffD7AAEC),
+    this.validator,
   });
 
   @override
@@ -25,9 +27,10 @@ class _CustomFieldState extends State<CustomField> {
 
   @override
   Widget build(BuildContext context) {
-    return TextField(
+    return TextFormField(
       controller: widget.controller,
       obscureText: widget.isPassword ? _obscureText : false,
+      validator: widget.validator,
       style: TextStyle(
         color: widget.textColor,
         fontSize: 15,
@@ -51,6 +54,24 @@ class _CustomFieldState extends State<CustomField> {
             color: widget.borderColor,
             width: 1,
           ),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(27),
+          borderSide: const BorderSide(
+            color: Colors.red,
+            width: 1,
+          ),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(27),
+          borderSide: const BorderSide(
+            color: Colors.red,
+            width: 1,
+          ),
+        ),
+        errorStyle: const TextStyle(
+          color: Colors.red,
+          fontSize: 12,
         ),
         suffixIcon: widget.isPassword
             ? IconButton(

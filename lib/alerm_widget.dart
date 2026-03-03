@@ -1,8 +1,12 @@
 import 'package:alerm/alerm_popup.dart';
 import 'package:flutter/material.dart';
+import '../services/alarm_service.dart';
+import '../models/alarm_model.dart';
 
 class AlermWidget extends StatefulWidget {
-  const AlermWidget({super.key});
+  final AlarmModel alarm;
+  
+  const AlermWidget({super.key, required this.alarm});
 
   @override
   State<AlermWidget> createState() => _AlermWidgetState();
@@ -10,6 +14,8 @@ class AlermWidget extends StatefulWidget {
 
 class _AlermWidgetState extends State<AlermWidget>
     with SingleTickerProviderStateMixin {
+  final AlarmService _alarmService = AlarmService();
+  
   bool _isOn = true;
   double _dragX = 0;
   bool _isDragging = false;
@@ -22,11 +28,11 @@ class _AlermWidgetState extends State<AlermWidget>
   late Animation<double> _thumbAnim;
 
   final List<String> _days = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-  final List<int> _activeDays = [2, 3];
 
   @override
   void initState() {
     super.initState();
+    _isOn = widget.alarm.isOn;
     _animController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 250),
@@ -44,12 +50,54 @@ class _AlermWidgetState extends State<AlermWidget>
     super.dispose();
   }
 
-  void _toggle() {
+  void _toggle() async {
     setState(() => _isOn = !_isOn);
     if (_isOn) {
       _animController.forward();
     } else {
       _animController.reverse();
+    }
+
+    try {
+      await _alarmService.toggleAlarm(widget.alarm.id!, _isOn);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to toggle alarm: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        setState(() => _isOn = !_isOn);
+        if (_isOn) {
+          _animController.forward();
+        } else {
+          _animController.reverse();
+        }
+      }
+    }
+  }
+
+  void _deleteAlarm() async {
+    try {
+      await _alarmService.deleteAlarm(widget.alarm.id!);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Alarm deleted successfully'),
+            backgroundColor: Color(0xFFD96FE8),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to delete alarm: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -105,21 +153,23 @@ class _AlermWidgetState extends State<AlermWidget>
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-      
-            Text(
-              '03:50',
-              style: TextStyle(
-                fontSize: 32,
-                fontWeight: FontWeight.w300,
-                color: _isOn ? Colors.white : Colors.white38,
-                letterSpacing: 1.5,
+            GestureDetector(
+              onLongPress: _deleteAlarm,
+              child: Text(
+                widget.alarm.time,
+                style: TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.w300,
+                  color: _isOn ? Colors.white : Colors.white38,
+                  letterSpacing: 1.5,
+                ),
               ),
             ),
       
       
             Row(
               children: List.generate(_days.length, (i) {
-                final isActive = _activeDays.contains(i);
+                final isActive = widget.alarm.activeDays.contains(i);
                 return Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 3),
                   child: Text(

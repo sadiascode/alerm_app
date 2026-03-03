@@ -1,10 +1,10 @@
 import 'package:alerm/app_shell.dart';
+import 'package:alerm/auth_service.dart';
 import 'package:alerm/signup_screen.dart';
 import 'package:flutter/material.dart';
 import 'custom_button.dart';
 import 'custom_field.dart';
 import 'custom_screen.dart';
-import 'forget_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -18,6 +18,69 @@ class _LoginScreenState extends State<LoginScreen> {
   bool isLoading = false;
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
+  final AuthService _authService = AuthService();
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+
+  // Handle login
+  Future<void> _handleLogin() async {
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    setState(() {
+      isLoading = true;
+    });
+
+    try {
+      await _authService.signInWithEmailAndPassword(
+        emailController.text.trim(),
+        passwordController.text,
+      );
+
+      if (mounted) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const AppShell()),
+          (route) => false,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString()),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
+    }
+  }
+
+  // Validate email
+  String? _validateEmail(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Please enter your email';
+    }
+    if (!_authService.isValidEmail(value)) {
+      return 'Please enter a valid email';
+    }
+    return null;
+  }
+
+  // Validate password
+  String? _validatePassword(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Please enter your password';
+    }
+    return null;
+  }
 
 
   @override
@@ -26,33 +89,37 @@ class _LoginScreenState extends State<LoginScreen> {
     final screenWidth = MediaQuery.of(context).size.width;
     return Scaffold(
       backgroundColor: Colors.black,
-      body: CustomScreen(
-        imagePath: 'assets/logo.jpeg',
-        imageHeight: screenHeight * 0.319,
-        imageWidth: screenWidth,
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Center(
-                child: Text(
-                  "Welcome to Spark Time",
-                  style: TextStyle(fontSize: 24,color: Color(0xffD7AAEC)),
+      body: Form(
+        key: _formKey,
+        child: CustomScreen(
+          imagePath: 'assets/logo.jpeg',
+          imageHeight: screenHeight * 0.319,
+          imageWidth: screenWidth,
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Center(
+                  child: Text(
+                    "Welcome to Spark Time",
+                    style: TextStyle(fontSize: 24,color: Color(0xffD7AAEC)),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 15),
-              CustomField(
-                hintText: "Email",
-                borderColor: const Color(0xffD7AAEC),
-
-              ),
-              const SizedBox(height: 17),
-              CustomField(
-                hintText: "Password",
-                borderColor: const Color(0xffD7AAEC),
-                isPassword: true,
-
-              ),
+                const SizedBox(height: 15),
+                CustomField(
+                  hintText: "Email",
+                  borderColor: const Color(0xffD7AAEC),
+                  controller: emailController,
+                  validator: _validateEmail,
+                ),
+                const SizedBox(height: 17),
+                CustomField(
+                  hintText: "Password",
+                  borderColor: const Color(0xffD7AAEC),
+                  isPassword: true,
+                  controller: passwordController,
+                  validator: _validatePassword,
+                ),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -69,29 +136,11 @@ class _LoginScreenState extends State<LoginScreen> {
                       const Text("Remember Me ", style: TextStyle(fontSize: 14,color: Color(0xffD7AAEC),)),
                     ],
                   ),
-                  TextButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const ForgetScreen()),
-                      );
-                    },
-                    child: const Text(
-                      "Forgot Password?",
-                      style: TextStyle(fontSize: 14, color: Color(0xffD7AAEC),),
-                    ),
-                  ),
-                ],
-              ),
+
               const SizedBox(height: 15),
               CustomButton(
                 text: "Sign In",
-                onTap: (){
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const AppShell()),
-                    );
-                },
+                onTap: _handleLogin,
                 isLoading: isLoading,
               ),
               SizedBox(height: screenHeight * 0.02),
@@ -125,8 +174,11 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ],
           ),
-        ),
-      ),
-    );
+        ]
+      )
+     )
+   )
+  )
+);
   }
 }

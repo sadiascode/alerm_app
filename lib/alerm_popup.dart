@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/alarm_service.dart';
 
 class AlermPopup extends StatefulWidget {
   const AlermPopup({super.key});
@@ -8,6 +9,8 @@ class AlermPopup extends StatefulWidget {
 }
 
 class _AlermPopupState extends State<AlermPopup> {
+  final AlarmService _alarmService = AlarmService();
+  
   int hour = 3;
   int minute = 50;
   bool isAm = true;
@@ -19,6 +22,8 @@ class _AlermPopupState extends State<AlermPopup> {
   final List<bool> activeDays = [true, false, true, false, false, true, true];
   final List<String> dayLabels = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
   final List<String> dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+  bool _isLoading = false;
 
   static const Color bgColor = Color(0xFF0D0F1A);
   static const Color sheetColor = Color(0xFF161827);
@@ -35,14 +40,61 @@ class _AlermPopupState extends State<AlermPopup> {
     return active.isEmpty ? 'Never' : active.join(', ');
   }
 
-  int get finalHour24 {
-    int finalHour = hour;
-    if (!isAm && hour != 12) {
-      finalHour += 12;
-    } else if (isAm && hour == 12) {
-      finalHour = 0;
+  Future<void> _saveAlarm() async {
+    if (_isLoading) return; // Prevent duplicate presses
+    
+    setState(() => _isLoading = true);
+    
+    try {
+      final timeString = '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
+      final selectedDays = <int>[];
+      
+      for (int i = 0; i < activeDays.length; i++) {
+        if (activeDays[i]) {
+          selectedDays.add(i);
+        }
+      }
+
+      await _alarmService.createAlarm(
+        time: timeString,
+        activeDays: selectedDays,
+        isOn: true,
+      );
+
+      // Reset loading state immediately after save completes
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+
+      // Close popup immediately
+      if (mounted) {
+        Navigator.pop(context);
+      }
+
+      // Show success message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Alarm created successfully'),
+            backgroundColor: Color(0xFFD96FE8),
+          ),
+        );
+      }
+    } catch (e) {
+      // Reset loading state on error
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to create alarm: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
-    return finalHour;
   }
 
   @override
@@ -233,22 +285,27 @@ class _AlermPopupState extends State<AlermPopup> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               TextButton(
-                onPressed: () => Navigator.pop(context),
+                onPressed: _isLoading ? null : () => Navigator.pop(context),
                 child: const Text(
                   'Cancel',
                   style: TextStyle(color: labelColor, fontSize: 16),
                 ),
               ),
               TextButton(
-                onPressed: () {
-                  debugPrint(
-                      "Saved Time: ${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')} ${isAm ? "AM" : "PM"} (24h: $finalHour24)");
-                  Navigator.pop(context);
-                },
-                child: const Text(
-                  'Save',
-                  style: TextStyle(color: accentColor, fontSize: 16),
-                ),
+                onPressed: _isLoading ? null : _saveAlarm,
+                child: _isLoading
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 1,
+                          valueColor: AlwaysStoppedAnimation<Color>(accentColor),
+                        ),
+                      )
+                    : const Text(
+                        'Save',
+                        style: TextStyle(color: accentColor, fontSize: 16),
+                      ),
               ),
             ],
           ),
