@@ -1,10 +1,10 @@
-import 'package:alerm/stopwatch.dart';
+import 'package:alerm/stopwatch/stopwatch.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
-import 'countdown.dart';
+import '../countdown/countdown.dart';
 import 'custom_navbar.dart';
-import 'home_screen.dart';
+import '../home/home_screen.dart';
 
 class AppShell extends StatefulWidget {
   const AppShell({super.key});

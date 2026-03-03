@@ -1,10 +1,10 @@
-import 'package:alerm/app_shell.dart';
-import 'package:alerm/auth_service.dart';
-import 'package:alerm/signup_screen.dart';
+import 'package:alerm/appshell/app_shell.dart';
+import 'package:alerm/services/auth_service.dart';
+import 'package:alerm/auth/signup_screen.dart';
 import 'package:flutter/material.dart';
-import 'custom_button.dart';
-import 'custom_field.dart';
-import 'custom_screen.dart';
+import '../widget/custom_button.dart';
+import '../widget/custom_field.dart';
+import '../widget/custom_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});

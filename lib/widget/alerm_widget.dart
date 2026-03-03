@@ -1,7 +1,7 @@
-import 'package:alerm/alerm_popup.dart';
+import 'package:alerm/widget/alerm_popup.dart';
 import 'package:flutter/material.dart';
-import '../services/alarm_service.dart';
-import '../models/alarm_model.dart';
+import '../../services/alarm_service.dart';
+import '../../models/alarm_model.dart';
 
 class AlermWidget extends StatefulWidget {
   final AlarmModel alarm;

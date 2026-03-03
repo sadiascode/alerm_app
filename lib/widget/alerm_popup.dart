@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../services/alarm_service.dart';
+import '../../services/alarm_service.dart';
 
 class AlermPopup extends StatefulWidget {
   const AlermPopup({super.key});

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../services/notification_service.dart';
-import '../examples/notification_examples.dart';
+import '../../services/notification_service.dart';
+import '../../examples/notification_examples.dart';
 
 /// Test screen for notification service
 class NotificationTestScreen extends StatefulWidget {

@@ -1,6 +1,6 @@
-import 'package:alerm/auth_service.dart';
-import 'package:alerm/login_screen.dart';
-import 'package:alerm/app_shell.dart';
+import 'package:alerm/services/auth_service.dart';
+import 'package:alerm/auth/login_screen.dart';
+import 'package:alerm/appshell/app_shell.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 

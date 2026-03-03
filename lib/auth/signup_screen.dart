@@ -1,10 +1,10 @@
-import 'package:alerm/auth_service.dart';
-import 'package:alerm/home_screen.dart';
-import 'package:alerm/login_screen.dart';
+import 'package:alerm/services/auth_service.dart';
+import 'package:alerm/home/home_screen.dart';
+import 'package:alerm/auth/login_screen.dart';
 import 'package:flutter/material.dart';
-import 'custom_button.dart';
-import 'custom_field.dart';
-import 'custom_screen.dart';
+import '../widget/custom_button.dart';
+import '../widget/custom_field.dart';
+import '../widget/custom_screen.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});

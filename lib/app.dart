@@ -1,5 +1,5 @@
 
-import 'package:alerm/auth_wrapper.dart';
+import 'package:alerm/auth/auth_wrapper.dart';
 import 'package:flutter/material.dart';
 
 class Alarm extends StatelessWidget {

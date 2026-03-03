@@ -1,9 +1,9 @@
-import 'package:alerm/alerm_widget.dart';
+import 'package:alerm/widget/alerm_widget.dart';
 import 'package:flutter/material.dart';
-import '../services/alarm_service.dart';
-import '../models/alarm_model.dart';
+import '../../services/alarm_service.dart';
+import '../../models/alarm_model.dart';
 
-import 'alerm_popup.dart';
+import '../widget/alerm_popup.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
