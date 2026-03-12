@@ -1,10 +1,10 @@
 import '../models/alarm_model.dart';
-import '../services/notification_service.dart';
+import '../services/notification_services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 
 class NotificationExamples {
-  static final NotificationService _notificationService = NotificationService();
+  static final NotificationServices _notificationService = NotificationServices();
 
 
   static Future<void> scheduleAlarmExample() async {

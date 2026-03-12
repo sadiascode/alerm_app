@@ -1,12 +1,13 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/alarm_model.dart';
-import 'notification_service.dart';
+import '../notification/notification_service.dart';
+import 'notification_services.dart';
 
 class AlarmService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final NotificationService _notificationService = NotificationService();
+  final NotificationServices _notificationServices = NotificationServices();
 
   CollectionReference<Map<String, dynamic>> get _alarmsCollection {
     final user = _auth.currentUser;
@@ -37,7 +38,7 @@ class AlarmService {
 
       if (isOn) {
         final alarm = alarmData.copyWith(id: docRef.id);
-        await _notificationService.scheduleAlarm(alarm);
+        await _notificationServices.scheduleAlarm(alarm);
       }
       
       return docRef.id;
@@ -88,10 +89,10 @@ class AlarmService {
       if (isOn) {
         final alarm = await getAlarm(alarmId);
         if (alarm != null) {
-          await _notificationService.scheduleAlarm(alarm);
+          await _notificationServices.scheduleAlarm(alarm);
         }
       } else {
-        await _notificationService.cancelAlarm(alarmId);
+        await _notificationServices.cancelAlarm(alarmId);
       }
     } catch (e) {
       throw Exception('Failed to toggle alarm: $e');
@@ -101,7 +102,7 @@ class AlarmService {
   Future<void> deleteAlarm(String alarmId) async {
     try {
 
-      await _notificationService.cancelAlarm(alarmId);
+      await _notificationServices.cancelAlarm(alarmId);
       await _alarmsCollection.doc(alarmId).delete();
     } catch (e) {
       throw Exception('Failed to delete alarm: $e');
