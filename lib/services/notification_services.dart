@@ -18,8 +18,13 @@ class NotificationServices {
   Future<void> initialize() async {
     if (_isInitialized) return;
 
-
-    tz.initializeTimeZones();
+    try {
+      tz.initializeTimeZones();
+      debugPrint('Timezones initialized successfully');
+    } catch (e) {
+      debugPrint('Error initializing timezones: $e');
+      rethrow;
+    }
 
 
     const AndroidInitializationSettings initializationSettingsAndroid =
@@ -145,6 +150,10 @@ class NotificationServices {
       enableVibration: true,
       fullScreenIntent: true,
       category: AndroidNotificationCategory.alarm,
+      channelShowBadge: true,
+      enableLights: true,
+      autoCancel: false, // Don't auto-cancel alarm notifications
+      ongoing: true, // Make it ongoing until dismissed
     );
 
     const DarwinNotificationDetails iOSPlatformChannelSpecifics =
@@ -173,6 +182,7 @@ class NotificationServices {
       matchDateTimeComponents: alarm.activeDays.isNotEmpty
           ? DateTimeComponents.time
           : null,
+      payload: _createPayload(alarm),
     );
 
     debugPrint('Alarm scheduled: ${alarm.id} at $scheduledTime');
@@ -183,45 +193,39 @@ class NotificationServices {
     List<int> activeDays,
     int currentDayIndex,
   ) {
+    debugPrint('Finding next active day. Current day index: $currentDayIndex, Active days: $activeDays');
 
-    for (int i = 0; i < 7; i++) {
+    // Normalize activeDays to ensure they're in range 0-6 (Monday=0, Sunday=6)
+    final normalizedActiveDays = activeDays.map((day) => day % 7).toList();
+    
+    final now = tz.TZDateTime.now(tz.local);
+    
+    // Check today first
+    if (normalizedActiveDays.contains(currentDayIndex) && scheduledTime.isAfter(now)) {
+      debugPrint('Alarm scheduled for today: $scheduledTime');
+      return scheduledTime;
+    }
+    
+    // Check upcoming days in the next week
+    for (int i = 1; i <= 7; i++) {
       int checkDayIndex = (currentDayIndex + i) % 7;
-      if (activeDays.contains(checkDayIndex)) {
-        if (i == 0 && scheduledTime.isAfter(tz.TZDateTime.now(tz.local))) {
-
-          return scheduledTime;
-        } else if (i > 0) {
-
-          tz.TZDateTime nextTime = scheduledTime.add(Duration(days: i));
-          return tz.TZDateTime(
-            tz.local,
-            nextTime.year,
-            nextTime.month,
-            nextTime.day,
-            scheduledTime.hour,
-            scheduledTime.minute,
-          );
-        }
+      if (normalizedActiveDays.contains(checkDayIndex)) {
+        tz.TZDateTime nextTime = scheduledTime.add(Duration(days: i));
+        tz.TZDateTime result = tz.TZDateTime(
+          tz.local,
+          nextTime.year,
+          nextTime.month,
+          nextTime.day,
+          scheduledTime.hour,
+          scheduledTime.minute,
+        );
+        debugPrint('Alarm scheduled for day $checkDayIndex in $i days: $result');
+        return result;
       }
     }
 
-
-    if (activeDays.isNotEmpty) {
-      int firstActiveDay = activeDays.reduce((a, b) => a < b ? a : b);
-      int daysToAdd = (7 - currentDayIndex + firstActiveDay) % 7;
-      if (daysToAdd == 0) daysToAdd = 7;
-
-      tz.TZDateTime nextTime = scheduledTime.add(Duration(days: daysToAdd));
-      return tz.TZDateTime(
-        tz.local,
-        nextTime.year,
-        nextTime.month,
-        nextTime.day,
-        scheduledTime.hour,
-        scheduledTime.minute,
-      );
-    }
-
+    // Fallback (should never reach here if activeDays is not empty)
+    debugPrint('No active day found, using scheduled time as fallback');
     return scheduledTime;
   }
 
@@ -259,7 +263,38 @@ class NotificationServices {
 
   void _onNotificationTapped(NotificationResponse response) {
     debugPrint('Notification tapped: ${response.payload}');
+    
+    if (response.payload != null) {
+      final alarmData = _parsePayload(response.payload!);
+      _handleAlarmAction(alarmData);
+    }
+  }
 
+  String _createPayload(AlarmModel alarm) {
+    return 'alarm_id:${alarm.id}|time:${alarm.time}|days:${alarm.activeDays.join(',')}';
+  }
+
+  Map<String, String> _parsePayload(String payload) {
+    final Map<String, String> data = {};
+    final parts = payload.split('|');
+    
+    for (final part in parts) {
+      final keyValue = part.split(':');
+      if (keyValue.length == 2) {
+        data[keyValue[0]] = keyValue[1];
+      }
+    }
+    
+    return data;
+  }
+
+  void _handleAlarmAction(Map<String, String> alarmData) {
+    final alarmId = alarmData['alarm_id'];
+    if (alarmId != null) {
+      debugPrint('Handling alarm action for: $alarmId');
+      // Navigate to alarm screen or perform alarm-specific action
+      // You can use a navigation service or callback to handle this
+    }
   }
 
   Future<void> showTestNotification() async {

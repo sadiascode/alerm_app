@@ -55,5 +55,17 @@
 		</array>
 		<key>NSUserNotificationAlertStyle</key>
 		<string>alert</string>
+		<!-- Firebase Messaging Configuration -->
+		<key>ISMessagesExtension</key>
+		<false/>
+		<key>UIUserNotificationSettings</key>
+		<dict>
+			<key>UIUserNotificationTypeAlert</key>
+			<true/>
+			<key>UIUserNotificationTypeBadge</key>
+			<true/>
+			<key>UIUserNotificationTypeSound</key>
+			<true/>
+		</dict>
 	</dict>
 </plist>

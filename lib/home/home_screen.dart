@@ -70,54 +70,72 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                   const SizedBox(height: 55),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      IconButton(
-                        onPressed: (){
-                          showModalBottomSheet(
-                            context: context,
-                            isScrollControlled: true,
-                            backgroundColor: Colors.transparent,
-                            shape: const RoundedRectangleBorder(
-                              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-                            ),
-                            builder: (context) => DraggableScrollableSheet(
-                              initialChildSize: 0.85,
-                              maxChildSize: 0.95,
-                              minChildSize: 0.5,
-                              builder: (_, controller) => const AlermPopup(),
-                            ),
-                          );
-                        },
-                        icon: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.white24,
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(Icons.add,
-                              color: Colors.white, size: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    TextButton(
+                      onPressed: () => _showClearAllConfirmation(context),
+                      child: const Text(
+                        "Clear All",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
-                      const SizedBox(width: 8),
-                    ],
-                  ),
-                  const SizedBox(height: 40),
-                  if (alarms.isEmpty)
-                    const Center(
-                      child: Text(
-                        "No alarms yet. Tap + to add one.",
-                        style: TextStyle(color: Colors.white54, fontSize: 16),
-                      ),
-                    )
-                  else
-                    ...alarms.map((alarm) => Padding(
-                      padding: const EdgeInsets.only(bottom: 15),
-                      child: AlermWidget(alarm: alarm),
-                    )),
-                ],
+                    ),
+
+                    Row(
+                      children: [
+                        IconButton(
+                          onPressed: (){
+                            showModalBottomSheet(
+                              context: context,
+                              isScrollControlled: true,
+                              backgroundColor: Colors.transparent,
+                              shape: const RoundedRectangleBorder(
+                                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                              ),
+                              builder: (context) => DraggableScrollableSheet(
+                                initialChildSize: 0.85,
+                                maxChildSize: 0.95,
+                                minChildSize: 0.5,
+                                builder: (_, controller) => const AlermPopup(),
+                              ),
+                            );
+                          },
+                          icon: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: const BoxDecoration(
+                              color: Colors.white24,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.add,
+                                color: Colors.white, size: 20),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                      ],
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 40),
+
+                if (alarms.isEmpty)
+            const Center(
+              child: Text(
+                "No alarms yet. Tap + to add one.",
+                style: TextStyle(color: Colors.white54, fontSize: 16),
               ),
+            )
+            else
+            ...alarms.map((alarm) => Padding(
+            padding: const EdgeInsets.only(bottom: 15),
+            child: AlermWidget(alarm: alarm),
+            )),
+                ]
+              )
             );
           },
         ),
@@ -145,5 +163,94 @@ class _HomeScreenState extends State<HomeScreen> {
     if (activeDays.isEmpty) return 'No active days';
     
     return activeDays.join(', ');
+  }
+
+  void _showClearAllConfirmation(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xff0A0E1E),
+          title: const Text(
+            'Clear All Alarms',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          content: const Text(
+            'Are you sure you want to delete all alarms? This action cannot be undone.',
+            style: TextStyle(
+              color: Colors.white70,
+              fontSize: 14,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Close dialog
+              },
+              child: const Text(
+                'Cancel',
+                style: TextStyle(
+                  color: Color(0xffD7AAEC),
+                  fontSize: 14,
+                ),
+              ),
+            ),
+            TextButton(
+              onPressed: () async {
+                Navigator.of(context).pop(); // Close dialog
+                
+                try {
+                  // Show loading indicator
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Deleting all alarms...'),
+                      backgroundColor: Color(0xffD7AAEC),
+                      duration: Duration(seconds: 1),
+                    ),
+                  );
+                  
+                  // Delete all alarms
+                  await _alarmService.deleteAllAlarms();
+                  
+                  // Show success message
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('All alarms deleted successfully!'),
+                        backgroundColor: Colors.green,
+                        duration: Duration(seconds: 2),
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  // Show error message
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Error: ${e.toString()}'),
+                        backgroundColor: Colors.red,
+                        duration: Duration(seconds: 3),
+                      ),
+                    );
+                  }
+                }
+              },
+              child: const Text(
+                'Delete All',
+                style: TextStyle(
+                  color: Colors.red,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 }

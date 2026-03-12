@@ -120,4 +120,24 @@ class AlarmService {
       throw Exception('Failed to get alarm: $e');
     }
   }
+
+  Future<void> deleteAllAlarms() async {
+    try {
+      // Get all alarms
+      final snapshot = await _alarmsCollection.get();
+      
+      // Cancel all notifications first
+      await _notificationServices.cancelAllAlarms();
+      
+      // Delete all documents
+      final batch = _firestore.batch();
+      for (final doc in snapshot.docs) {
+        batch.delete(doc.reference);
+      }
+      
+      await batch.commit();
+    } catch (e) {
+      throw Exception('Failed to delete all alarms: $e');
+    }
+  }
 }

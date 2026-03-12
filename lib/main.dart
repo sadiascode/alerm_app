@@ -13,14 +13,24 @@ Future<void> main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  final notificationService = NotificationService();
-  await notificationService.initFCM();
-  
+  // Set up background message handler BEFORE app starts
   FirebaseMessaging.onBackgroundMessage(handleBackgroundMessage);
+
+  // Initialize Firebase Messaging asynchronously without blocking app startup
+  final notificationService = NotificationService();
+  unawaited(notificationService.initFCM());
 
   runApp(const Alarm());
 }
 
- Future<void> handleBackgroundMessage(RemoteMessage message) async {
-  print('Message : ${message.notification?.title}');
+// Helper function to fire-and-forget async operations
+void unawaited(Future<void> future) {
+  // Intentionally not awaiting the future
+}
+
+ @pragma('vm:entry-point')
+Future<void> handleBackgroundMessage(RemoteMessage message) async {
+  debugPrint('Background message: ${message.notification?.title}');
+  // Handle background message logic here
+  // You can show local notifications or process data
 }
