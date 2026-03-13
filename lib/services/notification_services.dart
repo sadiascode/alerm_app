@@ -66,6 +66,9 @@ class NotificationServices {
 
     if (Platform.isIOS) {
       await _requestIOSPermissions();
+    } else if (Platform.isAndroid) {
+      // Request Android permissions
+      await requestPermissions();
     }
 
     _isInitialized = true;
@@ -102,9 +105,18 @@ class NotificationServices {
           _flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<
               AndroidFlutterLocalNotificationsPlugin>();
 
+      // Request notification permission
       final bool? grantedNotificationPermission =
           await androidImplementation?.requestNotificationsPermission();
-      return grantedNotificationPermission ?? false;
+      
+      // Request exact alarm permission (Android 12+)
+      final bool? grantedExactAlarmPermission =
+          await androidImplementation?.requestExactAlarmsPermission();
+      
+      debugPrint('Notification permission: $grantedNotificationPermission');
+      debugPrint('Exact alarm permission: $grantedExactAlarmPermission');
+      
+      return (grantedNotificationPermission ?? false) && (grantedExactAlarmPermission ?? false);
     }
     return false;
   }
@@ -359,21 +371,17 @@ class NotificationServices {
 
     debugPrint('Rescheduling ${alarms.length} active alarms...');
     
-    // Get existing pending notifications to avoid unnecessary cancellations
-    final existingNotifications = await getPendingNotifications();
-    final Set<String> existingAlarmIds = existingNotifications
-        .where((n) => n.payload != null)
-        .map((n) => _parsePayload(n.payload!)['alarm_id'] ?? '')
-        .toSet();
+    // Cancel all existing alarm notifications first to avoid duplicates
+    await cancelAllAlarms();
     
-    // Schedule only active alarms that aren't already scheduled
+    // Schedule all active alarms
     int scheduledCount = 0;
     for (final alarm in alarms) {
-      if (alarm.isOn && !existingAlarmIds.contains(alarm.id!)) {
+      if (alarm.isOn) {
         try {
           await scheduleAlarm(alarm);
           scheduledCount++;
-          debugPrint('Rescheduled alarm: ${alarm.id}');
+          debugPrint('Rescheduled alarm: ${alarm.id} at ${alarm.time}');
         } catch (e) {
           debugPrint('Failed to reschedule alarm ${alarm.id}: $e');
         }

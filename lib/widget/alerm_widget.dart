@@ -29,6 +29,39 @@ class _AlermWidgetState extends State<AlermWidget>
 
   final List<String> _days = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
+  /// Formats time string to 12-hour format with AM/PM
+  String _formatTimeWithAMPM(String timeString) {
+    // If time already contains AM/PM, return as is
+    if (timeString.contains('AM') || timeString.contains('PM')) {
+      return timeString;
+    }
+    
+    // Parse 24-hour format (HH:mm)
+    final parts = timeString.split(':');
+    if (parts.length != 2) return timeString; // Return as is if format is unexpected
+    
+    try {
+      final hour = int.parse(parts[0]);
+      final minute = parts[1];
+      
+      String period = 'AM';
+      int displayHour = hour;
+      
+      if (hour >= 12) {
+        period = 'PM';
+        if (hour > 12) {
+          displayHour = hour - 12;
+        }
+      } else if (hour == 0) {
+        displayHour = 12;
+      }
+      
+      return '$displayHour:$minute $period';
+    } catch (e) {
+      return timeString; // Return as is if parsing fails
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -156,7 +189,7 @@ class _AlermWidgetState extends State<AlermWidget>
             GestureDetector(
               onLongPress: _deleteAlarm,
               child: Text(
-                widget.alarm.time,
+                _formatTimeWithAMPM(widget.alarm.time),
                 style: TextStyle(
                   fontSize: 32,
                   fontWeight: FontWeight.w300,

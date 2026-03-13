@@ -55,8 +55,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   const SizedBox(height: 10),
                   Center(
                     child: Text(
-                      alarms.isNotEmpty && alarms.first.isOn
-                          ? _getNextAlarmTime(alarms.first)
+                          alarms.isNotEmpty && alarms.first.isOn
+                              ? _getNextAlarmTime(alarms.first)
                           : "No active alarms",
                       style: const TextStyle(fontSize: 20, color: Colors.white),
                     ),
@@ -149,7 +149,24 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   String _getNextAlarmTime(AlarmModel alarm) {
-    return alarm.time;
+    try {
+      final parts = alarm.time.split(':');
+      int hour = int.parse(parts[0]);
+      int minute = int.parse(parts[1]);
+
+      String period = hour >= 12 ? "PM" : "AM";
+
+      int displayHour = hour > 12 ? hour - 12 : hour;
+      if (displayHour == 0) {
+        displayHour = 12;
+      }
+
+      String minuteStr = minute.toString().padLeft(2, '0');
+
+      return "$displayHour:$minuteStr $period";
+    } catch (e) {
+      return alarm.time;
+    }
   }
 
   String _getNextAlarmDate(AlarmModel alarm) {
@@ -162,11 +179,20 @@ class _HomeScreenState extends State<HomeScreen> {
       int.parse(alarm.time.split(':')[1]),
     );
 
-    final days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    final days = [
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday'
+    ];
+
     final activeDays = alarm.activeDays.map((day) => days[day]).toList();
-    
+
     if (activeDays.isEmpty) return 'No active days';
-    
+
     return activeDays.join(', ');
   }
 

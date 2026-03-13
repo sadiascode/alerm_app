@@ -16,4 +16,10 @@ Future<void> main() async {
   await localNotifications.initialize();
 
   runApp(const Alarm());
+
+  WidgetsBinding.instance.addPostFrameCallback((_) async {
+    final localNotifications = NotificationServices();
+    await localNotifications.initialize(); // notifications এখন safe
+  });
+
 }
