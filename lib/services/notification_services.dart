@@ -1,5 +1,7 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz;
@@ -63,15 +65,53 @@ class NotificationServices {
       onDidReceiveNotificationResponse: _onNotificationTapped,
     );
 
-
-    if (Platform.isIOS) {
-      await _requestIOSPermissions();
-    } else if (Platform.isAndroid) {
+    // Create notification channels for Android
+    if (Platform.isAndroid) {
+      await _createNotificationChannels();
       // Request Android permissions
       await requestPermissions();
+    } else if (Platform.isIOS) {
+      await _requestIOSPermissions();
     }
 
     _isInitialized = true;
+  }
+
+  Future<void> _createNotificationChannels() async {
+    final androidImplementation = _flutterLocalNotificationsPlugin
+        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+    
+    if (androidImplementation == null) return;
+
+    // Main alarm channel
+    await androidImplementation.createNotificationChannel(
+      AndroidNotificationChannel(
+        'alarm_channel',
+        'Alarm Notifications',
+        description: 'Alarm notifications for scheduled alarms',
+        importance: Importance.high,
+        sound: RawResourceAndroidNotificationSound('alarm_sound'),
+        enableVibration: true,
+        vibrationPattern: Int64List.fromList([0, 1000, 500, 1000]),
+        showBadge: true,
+        enableLights: true,
+        ledColor: const Color.fromARGB(255, 255, 0, 0),
+        playSound: true,
+      ),
+    );
+
+    // Test notification channel
+    await androidImplementation.createNotificationChannel(
+      const AndroidNotificationChannel(
+        'test_channel',
+        'Test Notifications',
+        description: 'Test notifications',
+        importance: Importance.low,
+        showBadge: false,
+      ),
+    );
+
+    debugPrint('Notification channels created successfully');
   }
 
   Future<void> _requestIOSPermissions() async {
@@ -191,11 +231,24 @@ class NotificationServices {
       iOS: iOSPlatformChannelSpecifics,
     );
 
+    // Ensure scheduled time is in the future (critical for real devices)
+    tz.TZDateTime finalScheduledTime = scheduledTime;
+    if (finalScheduledTime.isBefore(now)) {
+      debugPrint('Scheduled time is in the past, adjusting to next valid time');
+      if (alarm.activeDays.isEmpty) {
+        // For one-time alarms, schedule for next day
+        finalScheduledTime = finalScheduledTime.add(Duration(days: 1));
+      } else {
+        // For recurring alarms, find next valid day
+        finalScheduledTime = _getNextActiveDayTime(finalScheduledTime, alarm.activeDays, now.weekday);
+      }
+    }
+
     await _flutterLocalNotificationsPlugin.zonedSchedule(
       _generateNotificationId(alarm.id!),
       'Alarm',
-      'Your alarm is ringing!',
-      scheduledTime,
+      'Your alarm is ringing! Tap to dismiss.',
+      finalScheduledTime,
       platformChannelSpecifics,
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       uiLocalNotificationDateInterpretation:
@@ -206,7 +259,27 @@ class NotificationServices {
       payload: _createPayload(alarm),
     );
 
-    debugPrint('Alarm scheduled: ${alarm.id} at $scheduledTime');
+    debugPrint('Alarm scheduled: ${alarm.id} at $finalScheduledTime (device: ${Platform.operatingSystem})');
+    
+    // Verify the alarm was scheduled
+    await _verifyAlarmScheduled(alarm.id!);
+  }
+
+  Future<void> _verifyAlarmScheduled(String alarmId) async {
+    try {
+      final pendingNotifications = await getPendingNotifications();
+      final expectedNotificationId = _generateNotificationId(alarmId);
+      final isScheduled = pendingNotifications.any((n) => n.id == expectedNotificationId);
+      
+      if (isScheduled) {
+        debugPrint('✅ Alarm $alarmId verified as scheduled (ID: $expectedNotificationId)');
+      } else {
+        debugPrint('❌ Alarm $alarmId NOT found in pending notifications (ID: $expectedNotificationId)');
+        debugPrint('Pending notifications count: ${pendingNotifications.length}');
+      }
+    } catch (e) {
+      debugPrint('Error verifying alarm schedule: $e');
+    }
   }
 
   tz.TZDateTime _getNextActiveDayTime(
@@ -405,5 +478,106 @@ class NotificationServices {
       debugPrint('ID: ${notification.id}, Title: ${notification.title}, Payload: ${notification.payload}');
     }
     debugPrint('=== End Debug ===');
+  }
+
+  /// Test immediate notification (for debugging real device issues)
+  Future<void> testImmediateNotification() async {
+    if (!_isInitialized) {
+      await initialize();
+    }
+
+    const AndroidNotificationDetails androidPlatformChannelSpecifics =
+        AndroidNotificationDetails(
+      'alarm_channel',
+      'Alarm Notifications',
+      channelDescription: 'Alarm notifications for scheduled alarms',
+      importance: Importance.max,
+      priority: Priority.high,
+      sound: RawResourceAndroidNotificationSound('alarm_sound'),
+      playSound: true,
+      enableVibration: true,
+      fullScreenIntent: true,
+      category: AndroidNotificationCategory.alarm,
+      channelShowBadge: true,
+      enableLights: true,
+      autoCancel: true,
+      ongoing: false,
+    );
+
+    const DarwinNotificationDetails iOSPlatformChannelSpecifics =
+        DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+      sound: 'alarm_sound.aiff',
+      categoryIdentifier: 'ALARM_CATEGORY',
+    );
+
+    const NotificationDetails platformChannelSpecifics = NotificationDetails(
+      android: androidPlatformChannelSpecifics,
+      iOS: iOSPlatformChannelSpecifics,
+    );
+
+    await _flutterLocalNotificationsPlugin.show(
+      DateTime.now().millisecondsSinceEpoch.remainder(100000),
+      'Test Alarm',
+      'This is a test alarm notification. It should appear immediately!',
+      platformChannelSpecifics,
+    );
+
+    debugPrint('🔔 Test notification sent immediately');
+  }
+
+  /// Test notification scheduled for 10 seconds from now
+  Future<void> testScheduledNotification() async {
+    if (!_isInitialized) {
+      await initialize();
+    }
+
+    const AndroidNotificationDetails androidPlatformChannelSpecifics =
+        AndroidNotificationDetails(
+      'alarm_channel',
+      'Alarm Notifications',
+      channelDescription: 'Alarm notifications for scheduled alarms',
+      importance: Importance.max,
+      priority: Priority.high,
+      sound: RawResourceAndroidNotificationSound('alarm_sound'),
+      playSound: true,
+      enableVibration: true,
+      fullScreenIntent: true,
+      category: AndroidNotificationCategory.alarm,
+      channelShowBadge: true,
+      enableLights: true,
+      autoCancel: false,
+      ongoing: true,
+    );
+
+    const DarwinNotificationDetails iOSPlatformChannelSpecifics =
+        DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+      sound: 'alarm_sound.aiff',
+      categoryIdentifier: 'ALARM_CATEGORY',
+    );
+
+    const NotificationDetails platformChannelSpecifics = NotificationDetails(
+      android: androidPlatformChannelSpecifics,
+      iOS: iOSPlatformChannelSpecifics,
+    );
+
+    final scheduledTime = tz.TZDateTime.now(tz.local).add(const Duration(seconds: 10));
+    
+    await _flutterLocalNotificationsPlugin.zonedSchedule(
+      DateTime.now().millisecondsSinceEpoch.remainder(100000),
+      'Scheduled Test Alarm',
+      'This alarm was scheduled 10 seconds ago. It should trigger now!',
+      scheduledTime,
+      platformChannelSpecifics,
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+    );
+
+    debugPrint('⏰ Test notification scheduled for ${scheduledTime.toString()}');
   }
 }

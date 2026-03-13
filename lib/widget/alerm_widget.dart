@@ -42,7 +42,7 @@ class _AlermWidgetState extends State<AlermWidget>
     
     try {
       final hour = int.parse(parts[0]);
-      final minute = parts[1];
+      final minute = int.parse(parts[1]).toString().padLeft(2, '0');
       
       String period = 'AM';
       int displayHour = hour;
@@ -52,7 +52,9 @@ class _AlermWidgetState extends State<AlermWidget>
         if (hour > 12) {
           displayHour = hour - 12;
         }
-      } else if (hour == 0) {
+      } 
+      
+      if (displayHour == 0) {
         displayHour = 12;
       }
       

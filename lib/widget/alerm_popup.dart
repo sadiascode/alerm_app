@@ -46,7 +46,14 @@ class _AlermPopupState extends State<AlermPopup> {
     setState(() => _isLoading = true);
     
     try {
-      final timeString = '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
+      int savedHour = hour;
+      if (isAm && savedHour == 12) {
+        savedHour = 0;
+      } else if (!isAm && savedHour < 12) {
+        savedHour += 12;
+      }
+      
+      final timeString = '${savedHour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
       final selectedDays = <int>[];
       
       for (int i = 0; i < activeDays.length; i++) {

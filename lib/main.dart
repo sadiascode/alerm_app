@@ -7,19 +7,21 @@ import 'services/notification_services.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
-
-  // CRITICAL: Initialize local notifications FIRST for alarm reliability
+  // Initialize notifications BEFORE runApp for real device reliability
   final localNotifications = NotificationServices();
   await localNotifications.initialize();
 
   runApp(const Alarm());
 
+  // Initialize Firebase after app starts
   WidgetsBinding.instance.addPostFrameCallback((_) async {
-    final localNotifications = NotificationServices();
-    await localNotifications.initialize(); // notifications এখন safe
+    try {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+      debugPrint('Firebase initialized successfully');
+    } catch (e) {
+      debugPrint('Firebase initialization error: $e');
+    }
   });
-
 }
