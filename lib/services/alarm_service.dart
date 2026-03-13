@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import '../models/alarm_model.dart';
-import '../notification/notification_service.dart';
 import 'notification_services.dart';
 
 class AlarmService {
@@ -76,6 +76,15 @@ class AlarmService {
       if (isOn != null) updates['isOn'] = isOn;
 
       await _alarmsCollection.doc(alarmId).update(updates);
+      
+      // Reschedule alarm if time, activeDays, or isOn changed
+      if (time != null || activeDays != null || isOn != null) {
+        final alarm = await getAlarm(alarmId);
+        if (alarm != null && alarm.isOn) {
+          await _notificationServices.scheduleAlarm(alarm);
+          debugPrint('Alarm rescheduled after update: $alarmId');
+        }
+      }
     } catch (e) {
       throw Exception('Failed to update alarm: $e');
     }
@@ -125,18 +134,30 @@ class AlarmService {
     try {
       // Get all alarms
       final snapshot = await _alarmsCollection.get();
+      print('Found ${snapshot.docs.length} alarms to delete');
+      
+      if (snapshot.docs.isEmpty) {
+        print('No alarms to delete');
+        return;
+      }
       
       // Cancel all notifications first
       await _notificationServices.cancelAllAlarms();
+      print('All notifications cancelled');
       
-      // Delete all documents
+      // Use batch delete for all documents at once
       final batch = _firestore.batch();
       for (final doc in snapshot.docs) {
+        print('Adding to batch: ${doc.id}');
         batch.delete(doc.reference);
       }
       
+      // Commit all deletions at once
       await batch.commit();
+      print('All alarms deleted successfully via batch');
+      
     } catch (e) {
+      print('Error deleting all alarms: $e');
       throw Exception('Failed to delete all alarms: $e');
     }
   }

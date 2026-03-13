@@ -19,11 +19,22 @@ class NotificationServices {
     if (_isInitialized) return;
 
     try {
+      // Initialize timezone database
       tz.initializeTimeZones();
-      debugPrint('Timezones initialized successfully');
+      
+      // Set local location to device timezone
+      final String timeZoneName = DateTime.now().timeZoneName;
+      debugPrint('Device timezone: $timeZoneName');
+      
+      // Set timezone to Asia/Dhaka as specified
+      try {
+        tz.setLocalLocation(tz.getLocation('Asia/Dhaka'));
+        debugPrint('Timezone set to Asia/Dhaka');
+      } catch (e) {
+        debugPrint('Failed to set Asia/Dhaka timezone: $e');
+      }
     } catch (e) {
-      debugPrint('Error initializing timezones: $e');
-      rethrow;
+      debugPrint('Critical timezone initialization error: $e');
     }
 
 
@@ -123,19 +134,17 @@ class NotificationServices {
     );
 
 
-    if (scheduledTime.isBefore(now)) {
-      scheduledTime = scheduledTime.add(const Duration(days: 1));
-    }
-
-
     if (alarm.activeDays.isNotEmpty) {
-
-      int currentDayIndex = now.weekday % 7;
       scheduledTime = _getNextActiveDayTime(
         scheduledTime,
         alarm.activeDays,
-        currentDayIndex,
+        now.weekday, // Use current weekday directly
       );
+    } else {
+      // For one-time alarms, only schedule if it's in the future
+      if (scheduledTime.isBefore(now)) {
+        scheduledTime = scheduledTime.add(const Duration(days: 1));
+      }
     }
 
     const AndroidNotificationDetails androidPlatformChannelSpecifics =
@@ -195,32 +204,41 @@ class NotificationServices {
   ) {
     debugPrint('Finding next active day. Current day index: $currentDayIndex, Active days: $activeDays');
 
-    // Normalize activeDays to ensure they're in range 0-6 (Monday=0, Sunday=6)
-    final normalizedActiveDays = activeDays.map((day) => day % 7).toList();
+    // Normalize activeDays to ensure they're in range 1-7 (Monday=1, Sunday=7)
+    final normalizedActiveDays = activeDays.map((day) {
+      int normalized = day % 7;
+      return normalized == 0 ? 7 : normalized; // Convert 0 to 7 (Sunday)
+    }).toSet();
     
     final now = tz.TZDateTime.now(tz.local);
     
-    // Check today first
-    if (normalizedActiveDays.contains(currentDayIndex) && scheduledTime.isAfter(now)) {
+    // Check today first (convert weekday to 1-7 format)
+    int todayIndex = now.weekday; // DateTime.weekday returns 1-7 (Monday=1, Sunday=7)
+    if (normalizedActiveDays.contains(todayIndex) && scheduledTime.isAfter(now)) {
       debugPrint('Alarm scheduled for today: $scheduledTime');
       return scheduledTime;
     }
     
     // Check upcoming days in the next week
     for (int i = 1; i <= 7; i++) {
-      int checkDayIndex = (currentDayIndex + i) % 7;
+      int checkDayIndex = (todayIndex - 1 + i) % 7 + 1; // Convert to 1-7 format
       if (normalizedActiveDays.contains(checkDayIndex)) {
-        tz.TZDateTime nextTime = scheduledTime.add(Duration(days: i));
+        // Create the target date by adding days to current date
+        tz.TZDateTime targetDate = now.add(Duration(days: i));
         tz.TZDateTime result = tz.TZDateTime(
           tz.local,
-          nextTime.year,
-          nextTime.month,
-          nextTime.day,
+          targetDate.year,
+          targetDate.month,
+          targetDate.day,
           scheduledTime.hour,
           scheduledTime.minute,
         );
-        debugPrint('Alarm scheduled for day $checkDayIndex in $i days: $result');
-        return result;
+        
+        // Ensure the result is in the future
+        if (result.isAfter(now)) {
+          debugPrint('Alarm scheduled for day $checkDayIndex in $i days: $result');
+          return result;
+        }
       }
     }
 
@@ -257,8 +275,10 @@ class NotificationServices {
   }
 
   int _generateNotificationId(String alarmId) {
-
-    return alarmId.hashCode.abs() % 100000;
+    // Use deterministic ID based on alarm ID hash for stable cancellation
+    // This ensures the same alarm always gets the same notification ID
+    final int baseId = alarmId.hashCode.abs();
+    return (baseId % 100000) + 100000; // Keep IDs in predictable range
   }
 
   void _onNotificationTapped(NotificationResponse response) {
@@ -329,5 +349,53 @@ class NotificationServices {
       'This is a test notification',
       platformChannelSpecifics,
     );
+  }
+
+  /// Reschedule all active alarms from Firestore (called on app startup)
+  Future<void> rescheduleAllActiveAlarms(List<AlarmModel> alarms) async {
+    if (!_isInitialized) {
+      await initialize();
+    }
+
+    debugPrint('Rescheduling ${alarms.length} active alarms...');
+    
+    // Get existing pending notifications to avoid unnecessary cancellations
+    final existingNotifications = await getPendingNotifications();
+    final Set<String> existingAlarmIds = existingNotifications
+        .where((n) => n.payload != null)
+        .map((n) => _parsePayload(n.payload!)['alarm_id'] ?? '')
+        .toSet();
+    
+    // Schedule only active alarms that aren't already scheduled
+    int scheduledCount = 0;
+    for (final alarm in alarms) {
+      if (alarm.isOn && !existingAlarmIds.contains(alarm.id!)) {
+        try {
+          await scheduleAlarm(alarm);
+          scheduledCount++;
+          debugPrint('Rescheduled alarm: ${alarm.id}');
+        } catch (e) {
+          debugPrint('Failed to reschedule alarm ${alarm.id}: $e');
+        }
+      }
+    }
+    
+    debugPrint('Successfully rescheduled $scheduledCount/$alarms.length alarms');
+  }
+
+  /// Get debug information about pending notifications
+  Future<void> debugPendingNotifications() async {
+    if (!_isInitialized) {
+      await initialize();
+    }
+
+    final pending = await getPendingNotifications();
+    debugPrint('=== Pending Notifications Debug ===');
+    debugPrint('Total pending: ${pending.length}');
+    
+    for (final notification in pending) {
+      debugPrint('ID: ${notification.id}, Title: ${notification.title}, Payload: ${notification.payload}');
+    }
+    debugPrint('=== End Debug ===');
   }
 }

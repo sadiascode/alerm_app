@@ -13,12 +13,16 @@ Future<void> main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  // Set up background message handler BEFORE app starts
-  FirebaseMessaging.onBackgroundMessage(handleBackgroundMessage);
-
-  // Initialize Firebase Messaging asynchronously without blocking app startup
+  // CRITICAL: Initialize local notifications FIRST for alarm reliability
+  final localNotifications = NotificationServices();
+  await localNotifications.initialize();
+  
+  // Initialize Firebase Messaging asynchronously with timeout to prevent blocking
   final notificationService = NotificationService();
-  unawaited(notificationService.initFCM());
+  unawaited(_initializeFCMWithTimeout(notificationService));
+
+  // Set up background message handler for Firebase Messaging
+  FirebaseMessaging.onBackgroundMessage(handleBackgroundMessage);
 
   runApp(const Alarm());
 }
@@ -26,6 +30,21 @@ Future<void> main() async {
 // Helper function to fire-and-forget async operations
 void unawaited(Future<void> future) {
   // Intentionally not awaiting the future
+}
+
+// Initialize Firebase Messaging with timeout to prevent blocking
+Future<void> _initializeFCMWithTimeout(NotificationService notificationService) async {
+  try {
+    await notificationService.initFCM().timeout(
+      const Duration(seconds: 10),
+      onTimeout: () {
+        debugPrint('Firebase Messaging initialization timed out - continuing without FCM');
+      },
+    );
+  } catch (e) {
+    debugPrint('Firebase Messaging initialization error: $e');
+    // Continue without blocking app startup
+  }
 }
 
  @pragma('vm:entry-point')

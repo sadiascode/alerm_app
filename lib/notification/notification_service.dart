@@ -18,9 +18,7 @@ class NotificationService {
       _setupMessageHandlers();
       
       // Request permissions (non-blocking for app startup)
-      _requestPermissions().catchError((e) {
-        debugPrint('Permission request failed: $e');
-      });
+await _requestPermissions();
       
       // Initialize token handling with proper iOS APNS flow
       await _initializeTokenHandling();
@@ -62,44 +60,27 @@ class NotificationService {
     const baseDelay = Duration(seconds: 1);
     const maxDelay = Duration(seconds: 5);
     
+    // Simple retry to obtain FCM token directly
     for (int attempt = 0; attempt < maxAttempts; attempt++) {
       try {
-        debugPrint('Token attempt ${attempt + 1}/$maxAttempts');
-        
-        // Check APNS token availability first
-        final apnsToken = await _firebaseMessaging.getAPNSToken();
-        if (apnsToken != null) {
-          debugPrint('APNS token available, getting FCM token...');
-          
-          final fcmToken = await _firebaseMessaging.getToken();
-          if (fcmToken != null) {
-            _cachedFCMToken = fcmToken;
-            debugPrint('FCM Token obtained successfully: $fcmToken');
-            return;
-          }
-        } else {
-          debugPrint('APNS token not yet available');
+        final fcmToken = await _firebaseMessaging.getToken();
+        if (fcmToken != null) {
+          _cachedFCMToken = fcmToken;
+          debugPrint('FCM Token obtained successfully: $fcmToken');
+          return;
         }
-        
-        // Exponential backoff with jitter
-        if (attempt < maxAttempts - 1) {
-          final delay = _calculateBackoffDelay(attempt, baseDelay, maxDelay);
-          debugPrint('Waiting ${delay.inMilliseconds}ms before retry...');
-          await Future.delayed(delay);
-        }
-        
+        debugPrint('FCM token null, retry ${attempt + 1}');
       } catch (e) {
         debugPrint('Token attempt ${attempt + 1} failed: $e');
-        
-        if (attempt < maxAttempts - 1) {
-          final delay = _calculateBackoffDelay(attempt, baseDelay, maxDelay);
-          await Future.delayed(delay);
-        }
+      }
+      if (attempt < maxAttempts - 1) {
+        final delay = _calculateBackoffDelay(attempt, baseDelay, maxDelay);
+        debugPrint('Waiting ${delay.inMilliseconds}ms before retry...');
+        await Future.delayed(delay);
       }
     }
-    
     debugPrint('Token initialization completed after $maxAttempts attempts');
-    debugPrint('Note: FCM functionality may be limited without APNS token');
+    debugPrint('Note: FCM functionality may be limited without a token');
   }
 
   Duration _calculateBackoffDelay(int attempt, Duration baseDelay, Duration maxDelay) {

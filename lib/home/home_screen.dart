@@ -14,6 +14,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final AlarmService _alarmService = AlarmService();
+  List<AlarmModel> _cachedAlarms = [];
 
   @override
   Widget build(BuildContext context) {
@@ -41,6 +42,7 @@ class _HomeScreenState extends State<HomeScreen> {
             }
 
             final alarms = snapshot.data ?? [];
+            _cachedAlarms = alarms; // Cache the alarms
 
             return SingleChildScrollView(
               child: Column(
@@ -74,7 +76,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     TextButton(
-                      onPressed: () => _showClearAllConfirmation(context),
+                      onPressed: () {
+                        print('Clear All button pressed');
+                        _showClearAllConfirmation(context);
+                      },
                       child: const Text(
                         "Clear All",
                         style: TextStyle(
@@ -201,6 +206,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             TextButton(
               onPressed: () async {
+                print('Delete All confirmed');
                 Navigator.of(context).pop(); // Close dialog
                 
                 try {
@@ -213,8 +219,19 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   );
                   
+                  print('Starting to delete all alarms...');
+                  print('Current alarms count: ${_cachedAlarms.length}');
+                  
                   // Delete all alarms
                   await _alarmService.deleteAllAlarms();
+                  print('Delete operation completed');
+                  
+                  // Force refresh the UI
+                  if (mounted) {
+                    setState(() {
+                      _cachedAlarms = [];
+                    });
+                  }
                   
                   // Show success message
                   if (context.mounted) {
@@ -227,6 +244,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     );
                   }
                 } catch (e) {
+                  print('Error in delete operation: $e');
                   // Show error message
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
