@@ -25,8 +25,8 @@ class _CustomScreenState extends State<CustomScreen> {
       backgroundColor: Colors.black,
       body: Stack(
         children: [
+          Container(color: Colors.black),
 
-          Container(color:Colors.black),
           Positioned(
             top: 10,
             left: 10,
@@ -43,9 +43,9 @@ class _CustomScreenState extends State<CustomScreen> {
 
           Align(
             alignment: Alignment.bottomCenter,
-            child: FractionallySizedBox(
-              heightFactor: 0.67,
-              widthFactor: 0.93,
+            child: SizedBox(
+              height: MediaQuery.of(context).size.height * 0.67,
+              width: MediaQuery.of(context).size.width * 0.93,
               child: Container(
                 padding: const EdgeInsets.all(24),
                 decoration: const BoxDecoration(
