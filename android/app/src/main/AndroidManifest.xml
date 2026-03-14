@@ -16,7 +16,7 @@
     <!-- Required for full screen intent when alarm rings -->
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
     <application
-        android:label="Alerm"
+        android:label="Alarm"
         android:name="${applicationName}"
         android:icon="@mipmap/launcher_icon">
         <activity
